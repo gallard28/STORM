@@ -26,40 +26,39 @@ library(gtools)
 
 
 #API Request to get Data####
-base<-"http://api.nsf.gov/services/v1/awards.json?"
-keyword<-"keyword=" 
-PI<-"pdPIName=" 
+#Conducted through Python
 
-keywordsearch<-paste(base,sep="",keyword)
-
-
-#Cyberinfrastrucute Call 
-term<-"cyberinfrastructure"
-CI_Call<-paste(keywordsearch,sep="",term)
-Get_Awards_CI<-GET(CI_Call)
-Get_Awards_CI_Text<-content(Get_Awards_CI, "text")
-Get_Awards_CI_JSON<-fromJSON(Get_Awards_CI_Text, flatten=TRUE)
-Get_Awards_CI_df<-as.data.frame(Get_Awards_CI_JSON)
-Awards_CI_df<-Get_Awards_CI_df
-#Realized max limit of 25 per page.  Now write search to collect all data.
-
-#Read in CSV file 
+#Read in CSV file from Python API data collection#
 csvloc<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/APIdata.csv"
-data<-read.csv(csvloc)
-
-#Save data backupdata_backup<-data
+APIdata<-read.csv(csvloc)
 
 
 #Format data
-data$date<-as.Date(data$date, format="%m/%d/%Y")
+APIdata$date<-as.Date(APIdata$date, format="%m/%d/%Y")
+APIdata$startDate<-as.Date(APIdata$startDate, format="%m/%d/%Y")
+str(APIdata)
 
 #Investigate data - Found 10 results for Michener
-str(data[data$piLastName=="Michener",])
+str(APIdata[APIdata$piLastName=="Michener",])
+
+APIdata[APIdata$piLastName=="Michener",]
 
 #Investigate data - Found 10 results for Michener
-str(data[data$title=="DataONE",])
+str(APIdata[APIdata$title =="Data Observation Network for Earth",])
 
-#The API ia unreliable. Download XML files and run them. 
+#Year
+APICyberInfData_2016<- APIdata %>% 
+  filter(startDate>"2015/12/31" & startDate<"2017/01/01")
+nrow(APICyberInfData_2016)
+
+
+APICyberInfData_2017<- APIdata %>% 
+  filter(date>"2016/12/31" & date<"2018/01/01")
+nrow(APICyberInfData_2017)
+
+
+
+#Check API reliability against the All-Awards XML downloads from NSF 
 require(flatxml)
 require(xml2)
 File<-'/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/NSF Data/2017/1764467.xml'
@@ -146,6 +145,64 @@ write.csv(Data2016, ExportFile)
 str(Data2016)
 
 Data2016$AwardTitle<-as.character(Data2016$AwardTitle)
+Data2016$AbstractNarration<-as.character(Data2016$AbstractNarration)
 
-CI<-Data2016 %>% 
-  filter(str_detect(AwardTitle, "cyberinfrastructure") | str_detect(AwardTitle, "Cyberinfrastructure") )
+
+CI2016<-Data2016 %>% 
+  filter(str_detect(AwardTitle, "cyberinfrastructure") | str_detect(AwardTitle, "Cyberinfrastructure")| str_detect(AbstractNarration, "cyberinfrastructure") | str_detect(AbstractNarration, "Cyberinfrastructure") )
+CI2017<-Data2017 %>% 
+  filter(str_detect(AwardTitle, "cyberinfrastructure") | str_detect(AwardTitle, "Cyberinfrastructure")| str_detect(AbstractNarration, "cyberinfrastructure") | str_detect(AbstractNarration, "Cyberinfrastructure") )
+
+
+#Compare Data for 2016 and 2017
+nrow(CI2016)
+nrow(APICyberInfData_2016)
+
+nrow(CI2017)
+nrow(APICyberInfData_2017)
+
+#data is close but not the same. This is a limitation the research and needs further investigation. For demonstrating the tool, we will use the API data since we have more of it than from the awards data. 
+#Build Tool####
+APIdataBackup<-APIdata
+names(APIdata)
+
+names(Data2016)
+
+
+#Data Exploration####
+
+str(APIdata)
+APIdata$awardee<-as.character(APIdata$awardee)
+APIdata$awardeeName<-as.character(APIdata$awardeeName)
+
+APIdata$abstractText<-as.character(APIdata$awardee)
+
+APIdata$projectOutComesReport<-as.character(APIdata$projectOutComesReport)
+
+AbstractSust<-APIdata %>% 
+  filter(str_detect(abstractText, "sustainability") | str_detect(abstractText, "Sustainability")) %>% 
+  nrow()
+
+AbstractCost<-APIdata %>% 
+  filter(str_detect(abstractText, "cost") | str_detect(abstractText, "Cost")) %>% 
+  nrow()
+
+OutcomesSust<-APIdata %>% 
+  filter(str_detect(projectOutComesReport, "sustainability") | str_detect(projectOutComesReport, "Sustainability")) %>% 
+  nrow()
+
+OutcomesCost<-APIdata %>% 
+  filter(str_detect(projectOutComesReport, "cost") | str_detect(projectOutComesReport, "Cost")) %>% 
+  nrow()
+
+OutcomesCost<-APIdata %>% 
+  filter(str_detect(projectOutComesReport, "cost") | str_detect(projectOutComesReport, "Cost")) %>% 
+  nrow()
+
+
+ggplot(APIdata, aes(x=awardeeName))+
+  geom_bar()
+
+ggplot(APIdata, aes(x=transType))+
+  geom_bar()
+
