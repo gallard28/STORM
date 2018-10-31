@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 30 11:46:30 2018
+
+@author: GrantAllard
+"""
+
+import requests
+import pandas as pd
+import json 
+from pandas.io.json import json_normalize
+import numpy
+import time
+import xml.etree.ElementTree as ET
+import io
+
+#Website base
+base="https://www.nsf.gov/awardsearch/download?DownloadFileName="
+year="2017"
+suffix="&All=true"
+
+url= base+year+suffix
+
+
+Folder="/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/NSF Data/2017"
+
+
+
+with open ('/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/NSF Data/2017/FileNames.txt') as file: 
+    Names2017= file.read().splitlines()
+ 
+#Approach 2 
+#Get 1 File Read
+tree=ET.parse('/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/NSF Data/2017/1764467.xml') 
+root= tree.getroot()   
+
+for child in root:
+    print(child.tag, child.attrib)
+    
+lst = root.findall('Award')
+                   
+                   )    
+[elem.tag for elem in root.iter()]
+
+for award in root.iter('Award'):
+    print(AwardTitle.text)
+    
+for award in root.iter('award'):
+    print(child.tag, child.attrib)    
+
+
+#Approach 3
+dfcols= ["AwardTitle", "AwardAmount", "StartDate"]
+root=ET.parse('/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/NSF Data/2017/1764467.xml')
+rows=root.findall('.//row')
+                  
+xml_data= [[row.get('AwardTitle'), row.get('AwardAmount'), row.get('AwardAmount')] for row in rows]
+
+df_xml = pd.DataFrame(xml_data, columns=dfcols)
+df_xml
+
+def iter_docs(awards)
+
+
+#Approach 4
+from bs4 import BeautifulSoup
+
+File='/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/NSF Data/2017/1764467.xml'
+
+
+soup = BeautifulSoup(open(File), 'lxml')
+
+for item in xml.findAll('Award'):
+    print(item)
+    
+contents = soup.read()
+    
+
+infile = open(File, "r")
+contents = infile.read()
+soup = BeautifulSoup(contents, 'xml')
+Awards = soup.find_all('Award')
+AwardTitles = soup.find_all('AwardTitle')
+
+
+
+
+#works 
+for AwardTitle in AwardTitle:
+    Text = (AwardTitle.get_text())
+
+
+#Tags
+
+Awards = []
+for Award in soup.find_all('Award'):
+    d={
+       'AwardTitle': Award.AwardTitle.string, 
+       'AwardEffectiveDate': Award.AwardEffectiveDate.string,
+       'AwardExpirationDate': Award.AwardExpirationDate.string,
+       'AwardAmount': Award.AwardAmount.string,
+       'AwardInstrument': Award.AwardInstrument.Value.string,
+       'Organization': Award.Organization.Code.string,
+       'Directorate': Award.Directorate.LongName.string,
+       'Division': Award.Division.LongName.string,
+       'ProgramOfficer': Award.ProgramOfficer.SignBlockName.string,
+       'AbstractNarration': Award.AbstractNarration.string,
+       'MinAmdLetterDate': Award.MinAmdLetterDate.string,
+       'MaxAmdLetterDate': Award.MaxAmdLetterDate.string,
+       'ARRAAmount': Award.ARRAAmount.string,
+       'AwardID': Award.AwardID.string,
+       'InvestigatorFirstName': Award.Investigator.FirstName.string,
+       'InvestigatorLastName': Award.Investigator.LastName.string, 
+       'InvestigatorEmailAddress': Award.Investigator.EmailAddress.string,
+       'InvestigatorStartDate': Award.Investigator.StartDate.string,
+       'InvestigatorEndDate': Award.Investigator.EndDate.string}
+    Awards.append(d)
+
+
+
+
+    
