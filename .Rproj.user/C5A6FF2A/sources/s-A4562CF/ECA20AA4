@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1540949758295.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "ECA20AA4",
+    "lastKnownWriteTime" : 8317129738841059146,
+    "last_content_update" : 1540949758295,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "68E7698",
+        "caption" : "Data2017",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=Data2017&cache_key=68E7698",
+        "displayedObservations" : 12231,
+        "environment" : "",
+        "object" : "Data2017",
+        "preview" : 0,
+        "totalObservations" : 12231,
+        "variables" : 50
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}
