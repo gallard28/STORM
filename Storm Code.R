@@ -18,7 +18,6 @@ library(readxl)
 library(rvest)
 library(jsonlite) 
 library(httr)
-library(tidyverse)
 library(readxl)
 library(gtools)
 library(lubridate)
@@ -36,6 +35,7 @@ APIdata<-read.csv(csvloc)
 
 
 #Format data
+#lubridate 
 APIdata$date<-as.Date(APIdata$date, format="%m/%d/%Y")
 APIdata$startDate<-as.Date(APIdata$startDate, format="%m/%d/%Y")
 APIdata$expDate<-as.Date(APIdata$expDate, format="%m/%d/%Y")
@@ -63,35 +63,6 @@ nrow(APICyberInfData_2017)
 #Write file to Folder
 ExportFile<-paste(Folder,sep="","Data2016",".csv")
 write.csv(Data2016, ExportFile)
-
-
-#Exploratory Data Analysis
-str(Data2016)
-
-Data2016$AwardTitle<-as.character(Data2016$AwardTitle)
-Data2016$AbstractNarration<-as.character(Data2016$AbstractNarration)
-
-
-CI2016<-Data2016 %>% 
-  filter(str_detect(AwardTitle, "cyberinfrastructure") | str_detect(AwardTitle, "Cyberinfrastructure")| str_detect(AbstractNarration, "cyberinfrastructure") | str_detect(AbstractNarration, "Cyberinfrastructure") )
-CI2017<-Data2017 %>% 
-  filter(str_detect(AwardTitle, "cyberinfrastructure") | str_detect(AwardTitle, "Cyberinfrastructure")| str_detect(AbstractNarration, "cyberinfrastructure") | str_detect(AbstractNarration, "Cyberinfrastructure") )
-
-
-#Compare Data for 2016 and 2017
-nrow(CI2016)
-nrow(APICyberInfData_2016)
-
-nrow(CI2017)
-nrow(APICyberInfData_2017)
-
-#data is close but not the same. This is a limitation the research and needs further investigation. For demonstrating the tool, we will use the API data since we have more of it than from the awards data. 
-#Build Tool####
-APIdataBackup<-APIdata
-names(APIdata)
-
-names(Data2016)
-
 
 #Data Exploration####
 str(APIdata)
@@ -169,10 +140,27 @@ APIdata$primaryProgram<-as.character(APIdata$primaryProgram)
 APIdata$title<-as.character(APIdata$title)
 str(APIdata)
 
-APIdata_Clean<-
+
 
 #Clean Data
-missingdata<-
+MissingAmt<-APIdata[is.na(APIdata$estimatedTotalAmt),]
+MissingObl<-APIdata[is.na(APIdata$fundsObligatedAmt),]
+MissingAmt
+
+APIdata_clean<-APIdata[!(APIdata$X %in% MissingAmt$X),]
+APIdata_clean<-APIdata[!(APIdata$X %in% MissingObl$X),]
+
+
+
+APIdata_clean[is.na(APIdata_clean$estimatedTotalAmt),]
+APIdata_clean[is.na(APIdata_clean$fundsObligatedAmt),]
+
+APIdata_clean$estimatedTotalAmt<-as.numeric(APIdata_clean$estimatedTotalAmt)
+APIdata_clean$fundsObligatedAmt<-as.numeric(APIdata_clean$fundsObligatedAmt)
+
+
+MissingDuration<-APIdata[is.na(APIdata$duration),]
+APIdata_clean<-APIdata[!(APIdata$X %in% MissingDuration$X),]
 
 
 #Awards by Year####
@@ -207,16 +195,17 @@ Size_count
 
 
 #Scattplot duration by log(estimatedTotalAmt)
-ggplot(APIdata, aes(x=log(estimatedTotalAmt), y=duration))+
-  geom_point()+
-  geom_smooth(method="lm", se=FALSE)
-
-ggplot(APIdata, aes(x=log(fundsObligatedAmt), y=duration))+
+ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=duration, color=transType))+
   geom_point()+
   geom_smooth(method="lm", se=FALSE)+
   ylim(0,4000)
 
-ggplot(APIdata, aes(x=log(fundsObligatedAmt), y=log(estimatedTotalAmt)))+
+ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=duration))+
+  geom_point()+
+  geom_smooth(method="lm", se=FALSE)+
+  ylim(0,4000)
+
+ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=log(estimatedTotalAmt)))+
   geom_point()+
   geom_smooth(method="lm")
 
@@ -224,7 +213,78 @@ str(APIdata$estimatedTotalAmt)
 
 APIdata$estimatedTotalAmt<-as.numeric(APIdata$estimatedTotalAmt)
 
+#APInoDates without Dates
+APINoDates<-APIdata 
+APINoDates$date<-NULL
+APINoDates$expDate <-NULL
+APINoDates$startDate<-NULL
+APINoDates$duration<-NULL
+APINoDates$interval<-NULL
+names(APIdata)
+
+lowcost<-APINoDates %>% 
+  filter(estimatedTotalAmt < 100)
+lowcost
 
 
+#Sentiment Analysis
+data("stop_words")
+abstracts<-APINoDates %>% 
+  select(abstractText, title) %>% 
+  mutate(linenumber = row_number()) 
+
+
+tidy_abstracts<-abstracts %>% 
+  unnest_tokens(abstractText, title)
+
+tidy_abstracts
+
+abstract_bigrams <- tidy_abstracts %>% 
+  unnest_tokens(bigram, abstractText, token = "ngrams", n=2)
+
+names(abstract_bigrams)
+
+abstract_bigrams %>% 
+  count(bigram, sort=TRUE)
+
+bigrams_separated<-abstract_bigrams %>% 
+  separate(bigram, c("word1", "word2"), sep=" ")
+
+bigrams_filtered<-bigrams_separated %>% 
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+bigrams_filtered %>% 
+  count(word1, word2, sort=TRUE)
+
+bigrams_united<-bigrams_filtered %>% 
+  unite(bigram, word1, word2, sep=" ")
+
+TopWords<-bigrams_united %>% 
+ count(bigram) %>% 
+  arrange(desc(n)) %>% 
+  top_n(150)
+TopWords
+
+File<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/TopWords.csv"
+write.csv(TopWords, File)
+
+bigram_tf_idf<- bigrams_united %>% 
+  count(title, bigram) %>% 
+  bind_tf_idf(bigram, title, n) %>% 
+  arrange(desc(tf_idf))
+
+names(bigram_tf_idf)
+
+bigram_tf_idf_graph<- bigram_tf_idf %>% 
+  arrange(desc(tf_idf)) %>% 
+  top_n(25)
+bigram_tf_idf
+
+ggplot(bigram_tf_idf_graph, aes(x=bigram, y=tf_idf, fill=title))+
+  geom_col(show.legend = FALSE)+
+  labs(x=NULL, y="td-idf")
+
+library(topicmodels)
 
 
