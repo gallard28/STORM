@@ -29,10 +29,28 @@ library(tidytext)
 #API Request to get Data####
 #Conducted through Python
 
-#Read in CSV file from Python API data collection#
+#Read in CSV file from Python API data collection - "keyword = cyberinfrastructure"
 csvloc<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/APIdata.csv"
 APIdata<-read.csv(csvloc)
 
+#Add column with keyword
+APIdata$keyword<-"cyberinfrastructure"
+
+#Read in CSV file from Python API data collection - "keyword = cyberinfrastructure"
+csvloc2<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/Cyber-infrastructure.csv"
+APIdata2<-read.csv(csvloc2)
+
+#Add column with keyword
+APIdata2$keyword<-"cyber infrastructure"
+
+#Initial Cleaning 
+APIdata$dunsNumber<- as.numeric(APIdata$dunsNumber)
+APIdata2$dunsNumber<- as.numeric(APIdata2$dunsNumber)
+APIdata$id<- as.numeric(APIdata$id)
+APIdata2$id<- as.numeric(APIdata2$id)
+
+#Combine DataFrames 
+APIdata<- bind_rows(APIdata, APIdata2 )
 
 #Format data
 #lubridate 
@@ -42,34 +60,19 @@ APIdata$expDate<-as.Date(APIdata$expDate, format="%m/%d/%Y")
 str(APIdata)
 
 #Investigate data - Found 10 results for Michener
-str(APIdata[APIdata$piLastName=="Michener",])
+#str(APIdata[APIdata$piLastName=="Michener",])
 
-APIdata[APIdata$piLastName=="Michener",]
+#APIdata[APIdata$piLastName=="Michener",]
 
 #Investigate data - Found 10 results for Michener
-str(APIdata[APIdata$title =="Data Observation Network for Earth",])
+#str(APIdata[APIdata$title =="Data Observation Network for Earth",])
 
-#Year
-APICyberInfData_2016<- APIdata %>% 
-  filter(startDate>"2015/12/31" & startDate<"2017/01/01")
-nrow(APICyberInfData_2016)
-
-
-APICyberInfData_2017<- APIdata %>% 
-  filter(date>"2016/12/31" & date<"2018/01/01")
-nrow(APICyberInfData_2017)
-
-
-#Write file to Folder
-ExportFile<-paste(Folder,sep="","Data2016",".csv")
-write.csv(Data2016, ExportFile)
 
 #Data Exploration####
-str(APIdata)
 APIdata$awardee<-as.character(APIdata$awardee)
 APIdata$awardeeName<-as.character(APIdata$awardeeName)
 
-APIdata$abstractText<-as.character(APIdata$awardee)
+APIdata$abstractText<-as.character(APIdata$abstractText)
 
 APIdata$projectOutComesReport<-as.character(APIdata$projectOutComesReport)
 
@@ -124,7 +127,7 @@ APIdata$perfCountryCode<-as.character(APIdata$perfCountryCode)
 APIdata$perfCounty<-as.character(APIdata$perfCounty)
 APIdata$perfLocation<-as.character(APIdata$perfLocation)
 APIdata$perfStateCode<-as.character(APIdata$perfStateCode)
-APIdata$awardeeZipCode<-as.numeric(APIdata$awardeeZipCode)
+APIdata$perfZipCode<-as.numeric(APIdata$perfZipCode)
 APIdata$piEmail<-as.character(APIdata$piEmail)
 APIdata$piFirstName<-as.character(APIdata$piFirstName)
 APIdata$piLastName<-as.character(APIdata$piLastName)
@@ -138,67 +141,118 @@ APIdata$piPhone<-str_replace(APIdata$piPhone,phone, phone)
 APIdata$poPhone<-str_replace(APIdata$piPhone,phone, phone  )
 APIdata$primaryProgram<-as.character(APIdata$primaryProgram)
 APIdata$title<-as.character(APIdata$title)
-str(APIdata)
+APIdata$estimatedTotalAmt<- as.numeric(APIdata$estimatedTotalAmt)
+APIdata$fundsObligatedAmt <- as.numeric(APIdata$fundsObligatedAmt)
 
 
 
 #Clean Data
 MissingAmt<-APIdata[is.na(APIdata$estimatedTotalAmt),]
 MissingObl<-APIdata[is.na(APIdata$fundsObligatedAmt),]
-MissingAmt
 
-APIdata_clean<-APIdata[!(APIdata$X %in% MissingAmt$X),]
-APIdata_clean<-APIdata[!(APIdata$X %in% MissingObl$X),]
+MissingData<-bind_rows(MissingAmt,MissingObl)
+str(MissingData)
 
+APIdata_clean<-APIdata[!(APIdata$X %in% MissingData$X),]
 
-
-APIdata_clean[is.na(APIdata_clean$estimatedTotalAmt),]
-APIdata_clean[is.na(APIdata_clean$fundsObligatedAmt),]
-
-APIdata_clean$estimatedTotalAmt<-as.numeric(APIdata_clean$estimatedTotalAmt)
-APIdata_clean$fundsObligatedAmt<-as.numeric(APIdata_clean$fundsObligatedAmt)
-
+nrow(APIdata_clean[is.na(APIdata_clean$estimatedTotalAmt),])
+nrow(APIdata_clean[is.na(APIdata_clean$fundsObligatedAmt),])
 
 MissingDuration<-APIdata[is.na(APIdata$duration),]
-APIdata_clean<-APIdata[!(APIdata$X %in% MissingDuration$X),]
+nrow(MissingDuration)
 
+#No Duplicates 
+nrow(APIdata_clean[duplicated(APIdata_clean),])
 
-#Awards by Year####
-#Check data types
-str(APIdata$startDate)
-str(APIdata$expDate)
-
-APIdata$interval<- APIdata$startDate %--% APIdata$expDate
-str(APIdata$interval)
+###Quantitative Analysis
+#Create Interval/Duration####
+APIdata_clean$interval<- APIdata_clean$startDate %--% APIdata_clean$expDate
 
 #seconds to days calculation 
 secs_in_days<- (24*60*60)
 
-APIdata$duration<-as.numeric((as.duration(APIdata$interval))/secs_in_days)
-str(APIdata$duration)
+APIdata_clean$duration<-as.numeric((as.duration(APIdata_clean$interval))/secs_in_days)
+str(APIdata_clean$duration)
 
-Duration_count<-APIdata %>% 
+Duration_count<-APIdata_clean %>% 
   group_by(duration) %>% 
+  count()
   
 ggplot(Duration_count, aes(x=duration, y = n, color=n))+
-  geom_point()
+  geom_point()+
+  geom_vline(xintercept=mean(Duration_count$duration), color= "red")
 
-#Need to also recode into categorical variable for frequency analysis and to make it consumable to human beings. 
 
-names(APIdata)
 
+#By Transaction Type
+APIdata_Grants<-APIdata %>% 
+  filter(transType == "Grant")
+
+APIdata_Coop<-APIdata %>% 
+  filter(transType == "CoopAgrmnt")
+
+
+#By Size 
 #Awards by size
 Size_count<-APIdata %>% 
   group_by(estimatedTotalAmt) %>% 
   count()
 Size_count
 
+summary(APIdata$estimatedTotalAmt)
+
+#By Size, 75th percentile
+APIdata %>% 
+  filter(transType =="Grant") %>% 
+  filter(estimatedTotalAmt<=719795) %>%
+  select(estimatedTotalAmt) %>% 
+  summary()
+
+APIdata %>% 
+  filter(transType =="Grant") %>% 
+  filter(estimatedTotalAmt<=719795) %>% 
+  select(estimatedTotalAmt) %>% 
+  summarize(avg=mean(estimatedTotalAmt, na.rm=TRUE), n=n(), 
+            sd=sd(estimatedTotalAmt, na.rm=TRUE), 
+            se = sd/sqrt(n))
+
+APIdata %>% 
+  filter(transType =="Grant") %>% 
+  filter(estimatedTotalAmt<=719795) %>% 
+  ggplot(aes(x=estimatedTotalAmt, y=..count..))+
+  geom_histogram()
+
+#Upper 25th Percent
+APIdata %>% 
+  filter(transType =="Grant") %>% 
+  filter(estimatedTotalAmt>719795) %>%
+  select(estimatedTotalAmt) %>% 
+  summary()
+
+APIdata %>% 
+  filter(transType =="Grant") %>% 
+  filter(estimatedTotalAmt>719795) %>% 
+  select(estimatedTotalAmt) %>% 
+  summarize(avg=mean(estimatedTotalAmt, na.rm=TRUE), n=n(), 
+            sd=sd(estimatedTotalAmt, na.rm=TRUE), 
+            se = sd/sqrt(n))
+
+APIdata %>% 
+  filter(transType =="Grant") %>% 
+  filter(estimatedTotalAmt>719795) %>% 
+  ggplot(aes(x=estimatedTotalAmt, y=..count..))+
+  geom_histogram()
+
+
+
 
 #Scattplot duration by log(estimatedTotalAmt)
+
 ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=duration, color=transType))+
   geom_point()+
   geom_smooth(method="lm", se=FALSE)+
-  ylim(0,4000)
+  ylim(0,4000)+
+  geom_hline(yintercept=c(365,730,1095,1460,1825,2190,2555,2920), alpha=.25)
 
 ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=duration))+
   geom_point()+
@@ -213,7 +267,7 @@ str(APIdata$estimatedTotalAmt)
 
 APIdata$estimatedTotalAmt<-as.numeric(APIdata$estimatedTotalAmt)
 
-#APInoDates without Dates
+#APInoDates without Dates (for textual analysis)####
 APINoDates<-APIdata 
 APINoDates$date<-NULL
 APINoDates$expDate <-NULL
@@ -227,19 +281,23 @@ lowcost<-APINoDates %>%
 lowcost
 
 
-#Sentiment Analysis
+APINoDates$transType
+
+
+#Content Analysis####
 data("stop_words")
 abstracts<-APINoDates %>% 
   select(abstractText, title) %>% 
   mutate(linenumber = row_number()) 
 
-
+#Word counts - bigrams####
 tidy_abstracts<-abstracts %>% 
   unnest_tokens(abstractText, title)
 
 tidy_abstracts
 
-abstract_bigrams <- tidy_abstracts %>% 
+#Bitrams Approach###
+abstract_bigrams <- abstracts %>% 
   unnest_tokens(bigram, abstractText, token = "ngrams", n=2)
 
 names(abstract_bigrams)
@@ -263,12 +321,14 @@ bigrams_united<-bigrams_filtered %>%
 TopWords<-bigrams_united %>% 
  count(bigram) %>% 
   arrange(desc(n)) %>% 
-  top_n(150)
+  top_n(25)
 TopWords
 
 File<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/TopWords.csv"
 write.csv(TopWords, File)
 
+
+#TF-IDF Approach with Bigrams
 bigram_tf_idf<- bigrams_united %>% 
   count(title, bigram) %>% 
   bind_tf_idf(bigram, title, n) %>% 
@@ -276,15 +336,95 @@ bigram_tf_idf<- bigrams_united %>%
 
 names(bigram_tf_idf)
 
+#TermFrequency Inverse Document Frequency Graph (Most important words in each award's abstract. Words that are important to one document within collection of documents. )####
 bigram_tf_idf_graph<- bigram_tf_idf %>% 
   arrange(desc(tf_idf)) %>% 
-  top_n(25)
-bigram_tf_idf
+  top_n(15)
+bigram_tf_idf_graph
 
-ggplot(bigram_tf_idf_graph, aes(x=bigram, y=tf_idf, fill=title))+
+ggplot(bigram_tf_idf_graph, aes(x=reorder(bigram,tf_idf), y=tf_idf, fill=title))+
   geom_col(show.legend = FALSE)+
-  labs(x=NULL, y="td-idf")
+  labs(x=NULL, y="td-idf")+
+  coord_flip()
+  
+#TF-IDF with Trigrams ####
+abstract_trigrams <- abstracts %>% 
+  unnest_tokens(trigram, abstractText, token = "ngrams", n=3)
 
+names(abstract_trigrams)
+
+abstract_trigrams %>% 
+  count(trigram, sort=TRUE)
+
+trigrams_separated<-abstract_trigrams %>% 
+  separate(trigram, c("word1", "word2", "word3"), sep=" ")
+
+trigrams_separated
+
+stop_words$word <- c(stop_words$word, "4 6 2012", "january 4 6", "1030838 oden support")
+
+trigrams_filtered<-trigrams_separated %>% 
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>% 
+  filter(!word3 %in% stop_words$word)
+
+trigrams_filtered %>% 
+  count(word1, word2, word3, sort=TRUE)
+
+trigrams_united<-trigrams_filtered %>% 
+  unite(trigram, word1, word2, word3, sep=" ")
+
+trigrams_united<-trigrams_united %>% 
+  filter(!trigram %in% stop_words$word)
+
+trigram_tf_idf<- trigrams_united %>% 
+  count(title, trigram) %>% 
+  bind_tf_idf(trigram, title, n) %>% 
+  arrange(desc(tf_idf))
+
+trigram_tf_idf_graph<- trigram_tf_idf %>% 
+  arrange(desc(tf_idf)) %>% 
+  top_n(15)
+
+ggplot(trigram_tf_idf_graph, aes(x=reorder(trigram,tf_idf), y=tf_idf, fill=title))+
+  geom_col(show.legend = FALSE)+
+  labs(x=NULL, y="td-idf")+
+  coord_flip()
+
+
+#LDA Approach####
 library(topicmodels)
+library(tm)
+
+#Load and Clean Text
+docs<-Corpus(VectorSource(abstracts$abstractText))
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeWords, c(stopwords("english"), "will", "research"))
+
+#Convert to DTM
+dtm<-DocumentTermMatrix(docs)
+
+abstractsLDA<- LDA(dtm, k=4, control=list(seed=1234))
+abstractsLDA
+top_terms<-tidy(abstractsLDA, matrix="beta") %>% 
+  group_by(topic) %>% 
+  top_n(10, beta) %>% 
+  arrange(desc(beta))
+top_terms
+
+top_terms %>% 
+  ggplot(aes(term, beta, fill=factor(topic))) + 
+  geom_col(show.legend=FALSE) +
+  facet_wrap(~topic, scales="free")+
+  coord_flip()
+
+
+
+
 
 
