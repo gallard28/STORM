@@ -14,18 +14,13 @@ library(tm)
 
 
 #Load Data
-csvloc<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/APIdata.csv"
-APIdata<-read.csv(csvloc)
+load(APIdata)
 
-csvloc2<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/APIdata_clean.csv"
-APIdata_clean<-read.csv(csvloc2)
+load(APIdata_clean)
 
-csvloc3<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/APINoDates.csv"
-APINoDates<-read.csv(csvloc3)
-
+load(APINoDates)
 
 #Content Analysis####
-
 #Project Abstracts####
 data("stop_words")
 abstracts<-APINoDates %>% 
@@ -36,54 +31,47 @@ abstracts<-APINoDates %>%
 tidy_abstracts<-abstracts %>% 
   unnest_tokens(abstractText, title)
 
-tidy_abstracts
-
 #Bitrams Approach###
 abstract_bigrams <- abstracts %>% 
   unnest_tokens(bigram, abstractText, token = "ngrams", n=2)
 
-names(abstract_bigrams)
-
 abstract_bigrams %>% 
   count(bigram, sort=TRUE)
 
-bigrams_separated<-abstract_bigrams %>% 
+abstract_bigrams_separated<-abstract_bigrams %>% 
   separate(bigram, c("word1", "word2"), sep=" ")
 
-bigrams_filtered<-bigrams_separated %>% 
+abstract_bigrams_filtered<-abstract_bigrams_separated %>% 
   filter(!word1 %in% stop_words$word) %>%
   filter(!word2 %in% stop_words$word)
 
-bigrams_filtered %>% 
+abstract_bigrams_filtered %>% 
   count(word1, word2, sort=TRUE)
 
-bigrams_united<-bigrams_filtered %>% 
+abstract_bigrams_united<-abstract_bigrams_filtered %>% 
   unite(bigram, word1, word2, sep=" ")
 
-TopWords<-bigrams_united %>% 
+Abstract_TopWords<-abstract_bigrams_united %>% 
   count(bigram) %>% 
   arrange(desc(n)) %>% 
   top_n(25)
-TopWords
 
 #TF-IDF Approach with Bigrams
-bigram_tf_idf<- bigrams_united %>% 
+abstract_bigram_tf_idf<- abstract_bigrams_united %>% 
   count(title, bigram) %>% 
   bind_tf_idf(bigram, title, n) %>% 
   arrange(desc(tf_idf))
 
-names(bigram_tf_idf)
-
 #TermFrequency Inverse Document Frequency Graph (Most important words in each award's abstract. Words that are important to one document within collection of documents. )####
-bigram_tf_idf_graph<- bigram_tf_idf %>% 
+abstract_bigram_tf_idf_graph<- abstract_bigram_tf_idf %>% 
   arrange(desc(tf_idf)) %>% 
   top_n(15)
-bigram_tf_idf_graph
 
-ggplot(bigram_tf_idf_graph, aes(x=reorder(bigram,tf_idf), y=tf_idf, fill=title))+
+abstract_tf_idf_plot<-ggplot(abstract_bigram_tf_idf_graph, aes(x=reorder(bigram,tf_idf), y=tf_idf, fill=title))+
   geom_col(show.legend = FALSE)+
   labs(x=NULL, y="td-idf")+
   coord_flip()
+abstract_tf_idf_plot
 
 #TF-IDF with Trigrams ####
 abstract_trigrams <- abstracts %>% 
@@ -94,121 +82,127 @@ names(abstract_trigrams)
 abstract_trigrams %>% 
   count(trigram, sort=TRUE)
 
-trigrams_separated<-abstract_trigrams %>% 
+abstract_trigrams_separated<-abstract_trigrams %>% 
   separate(trigram, c("word1", "word2", "word3"), sep=" ")
 
-trigrams_separated
 
 stop_words$word <- c(stop_words$word, "4 6 2012", "january 4 6", "1030838 oden support")
 
-trigrams_filtered<-trigrams_separated %>% 
+abstract_trigrams_filtered<-abstract_trigrams_separated %>% 
   filter(!word1 %in% stop_words$word) %>%
   filter(!word2 %in% stop_words$word) %>% 
   filter(!word3 %in% stop_words$word)
 
-trigrams_filtered %>% 
+abstract_trigrams_filtered %>% 
   count(word1, word2, word3, sort=TRUE)
 
-trigrams_united<-trigrams_filtered %>% 
+abstract_trigrams_united<-abstract_trigrams_filtered %>% 
   unite(trigram, word1, word2, word3, sep=" ")
 
-trigrams_united<-trigrams_united %>% 
+abstract_trigrams_united<-abstract_trigrams_united %>% 
   filter(!trigram %in% stop_words$word)
 
-trigram_tf_idf<- trigrams_united %>% 
+abstract_trigram_tf_idf<- abstract_trigrams_united %>% 
   count(title, trigram) %>% 
   bind_tf_idf(trigram, title, n) %>% 
   arrange(desc(tf_idf))
 
-trigram_tf_idf_graph<- trigram_tf_idf %>% 
+abstract_trigram_tf_idf_graph<- abstract_trigram_tf_idf %>% 
   arrange(desc(tf_idf)) %>% 
   top_n(15)
 
-ggplot(trigram_tf_idf_graph, aes(x=reorder(trigram,tf_idf), y=tf_idf, fill=title))+
+abstract_trigram_tf_idf_plot<-ggplot(abstract_trigram_tf_idf_graph, aes(x=reorder(trigram,tf_idf), y=tf_idf, fill=title))+
   geom_col(show.legend = FALSE)+
   labs(x=NULL, y="td-idf")+
   coord_flip()
 
+abstract_trigram_tf_idf_plot
+
 #LDA Approach###
 #Load and Clean Text
-docs<-Corpus(VectorSource(abstracts$abstractText))
+abstact_docs<-Corpus(VectorSource(abstracts$abstractText))
 toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
-docs <- tm_map(docs, toSpace, "/")
-docs <- tm_map(docs, toSpace, "@")
-docs <- tm_map(docs, toSpace, "\\|")
-docs <- tm_map(docs, removePunctuation)
-docs <- tm_map(docs, content_transformer(tolower))
-docs <- tm_map(docs, removeWords, c(stopwords("english"), "will", "research"))
+abstact_docs <- tm_map(abstact_docs, toSpace, "/")
+abstact_docs <- tm_map(abstact_docs, toSpace, "@")
+abstact_docs <- tm_map(abstact_docs, toSpace, "\\|")
+abstact_docs <- tm_map(abstact_docs, removePunctuation)
+abstact_docs <- tm_map(abstact_docs, content_transformer(tolower))
+abstact_docs <- tm_map(abstact_docs, removeWords, c(stopwords("english"), "will", "research"))
 
 #Convert to DTM
-dtm<-DocumentTermMatrix(docs)
+abstract_dtm<-DocumentTermMatrix(abstact_docs)
 
-abstractsLDA<- LDA(dtm, k=4, control=list(seed=1234))
+abstractsLDA<- LDA(abstract_dtm, k=2, control=list(seed=1234))
 abstractsLDA
-top_terms<-tidy(abstractsLDA, matrix="beta") %>% 
+astract_top_terms<-tidy(abstractsLDA, matrix="beta") %>% 
   group_by(topic) %>% 
   top_n(10, beta) %>% 
   arrange(desc(beta))
-top_terms
 
-top_terms %>% 
+
+abstract_lda_plot<-astract_top_terms %>% 
   ggplot(aes(term, beta, fill=factor(topic))) + 
   geom_col(show.legend=FALSE) +
   facet_wrap(~topic, scales="free")+
   coord_flip()
 
+abstract_lda_plot
+
 #ProjectOutcomes Reports####
 #Word counts - bigrams####
+#Clean Project Outcomes Reports (only look at the ones which have them)
+MissingProjectOR<-APINoDates[APINoDates$projectOutComesReport=="",]
+nrow(MissingProjectOR)
+
+APINoDates<- APINoDates[!(APINoDates$id %in% MissingProjectOR$id),]
+nrow(APINoDates)
+
 outcomes<-APINoDates %>% 
   select(projectOutComesReport, title) %>% 
   mutate(linenumber = row_number()) 
 
 tidy_outcomes<-outcomes %>% 
-  unnest_tokens(outcomesText, title)
+  unnest_tokens(projectOutComesReport, title)
 
-#Bitrams Approach###
+#Bigrams Approach###
 outcomes_bigrams <- outcomes %>% 
-  unnest_tokens(bigram, outcomesText, token = "ngrams", n=2)
-
-names(outcomes_bigrams)
+  unnest_tokens(bigram, projectOutComesReport, token = "ngrams", n=2)
 
 outcomes_bigrams %>% 
   count(bigram, sort=TRUE)
 
-bigrams_separated<-outcomes_bigrams %>% 
+outcomes_bigrams_separated<-outcomes_bigrams %>% 
   separate(bigram, c("word1", "word2"), sep=" ")
 
-bigrams_filtered<-bigrams_separated %>% 
+outcomes_bigrams_filtered<-outcomes_bigrams_separated %>% 
   filter(!word1 %in% stop_words$word) %>%
   filter(!word2 %in% stop_words$word)
 
-bigrams_filtered %>% 
+outcomes_bigrams_filtered %>% 
   count(word1, word2, sort=TRUE)
 
-bigrams_united<-bigrams_filtered %>% 
+outcomes_bigrams_united<-outcomes_bigrams_filtered %>% 
   unite(bigram, word1, word2, sep=" ")
 
-TopWords<-bigrams_united %>% 
+outcomes_TopWords<-outcomes_bigrams_united %>% 
   count(bigram) %>% 
   arrange(desc(n)) %>% 
   top_n(25)
-TopWords
 
 #TF-IDF Approach with Bigrams
-bigram_tf_idf<- bigrams_united %>% 
+outcomes_bigram_tf_idf<- outcomes_bigrams_united %>% 
   count(title, bigram) %>% 
   bind_tf_idf(bigram, title, n) %>% 
   arrange(desc(tf_idf))
 
-names(bigram_tf_idf)
 
 #TermFrequency Inverse Document Frequency Graph (Most important words in each award's outcomes. Words that are important to one document within collection of documents. )####
-bigram_tf_idf_graph<- bigram_tf_idf %>% 
+outcomes_bigram_tf_idf_graph<- outcomes_bigram_tf_idf %>% 
   arrange(desc(tf_idf)) %>% 
   top_n(15)
 bigram_tf_idf_graph
 
-ggplot(bigram_tf_idf_graph, aes(x=reorder(bigram,tf_idf), y=tf_idf, fill=title))+
+outcomes_bifgram_tf_idf_plot<-ggplot(outcomes_bigram_tf_idf_graph, aes(x=reorder(bigram,tf_idf), y=tf_idf, fill=title))+
   geom_col(show.legend = FALSE)+
   labs(x=NULL, y="td-idf")+
   coord_flip()
@@ -217,42 +211,36 @@ ggplot(bigram_tf_idf_graph, aes(x=reorder(bigram,tf_idf), y=tf_idf, fill=title))
 outcomes_trigrams <- outcomes %>% 
   unnest_tokens(trigram, projectOutComesReport, token = "ngrams", n=3)
 
-names(abstract_trigrams)
-
 outcomes_trigrams %>% 
   count(trigram, sort=TRUE)
 
-trigrams_separated<-outcomes_trigrams %>% 
+outcomes_trigrams_separated<-outcomes_trigrams %>% 
   separate(trigram, c("word1", "word2", "word3"), sep=" ")
 
-trigrams_separated
-
-stop_words$word <- c(stop_words$word, "4 6 2012", "january 4 6", "1030838 oden support")
-
-trigrams_filtered<-trigrams_separated %>% 
+outcomes_trigrams_filtered<-outcomes_trigrams_separated %>% 
   filter(!word1 %in% stop_words$word) %>%
   filter(!word2 %in% stop_words$word) %>% 
   filter(!word3 %in% stop_words$word)
 
-trigrams_filtered %>% 
+outcomes_trigrams_filtered %>% 
   count(word1, word2, word3, sort=TRUE)
 
-trigrams_united<-trigrams_filtered %>% 
+outcomes_trigrams_united<-outcomes_trigrams_filtered %>% 
   unite(trigram, word1, word2, word3, sep=" ")
 
-trigrams_united<-trigrams_united %>% 
+outcomes_trigrams_united<-outcomes_trigrams_united %>% 
   filter(!trigram %in% stop_words$word)
 
-trigram_tf_idf<- trigrams_united %>% 
+outcomes_trigram_tf_idf<- outcomes_trigrams_united %>% 
   count(title, trigram) %>% 
   bind_tf_idf(trigram, title, n) %>% 
   arrange(desc(tf_idf))
 
-trigram_tf_idf_graph<- trigram_tf_idf %>% 
+outcomes_trigram_tf_idf_graph<- outcomes_trigram_tf_idf %>% 
   arrange(desc(tf_idf)) %>% 
   top_n(15)
 
-ggplot(trigram_tf_idf_graph, aes(x=reorder(trigram,tf_idf), y=tf_idf, fill=title))+
+outcomes_trigram_tf_idf_plot<-ggplot(outcomes_trigram_tf_idf_graph, aes(x=reorder(trigram,tf_idf), y=tf_idf, fill=title))+
   geom_col(show.legend = FALSE)+
   labs(x=NULL, y="td-idf")+
   coord_flip()
@@ -260,29 +248,28 @@ ggplot(trigram_tf_idf_graph, aes(x=reorder(trigram,tf_idf), y=tf_idf, fill=title
 
 #LDA Approach####
 
-
 #Load and Clean Text
-docs<-Corpus(VectorSource(outcomes$abstractText))
+outcomes_docs<-Corpus(VectorSource(outcomes$projectOutComesReport))
 toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
-docs <- tm_map(docs, toSpace, "/")
-docs <- tm_map(docs, toSpace, "@")
-docs <- tm_map(docs, toSpace, "\\|")
-docs <- tm_map(docs, removePunctuation)
-docs <- tm_map(docs, content_transformer(tolower))
-docs <- tm_map(docs, removeWords, c(stopwords("english"), "will", "research"))
+outcomes_docs <- tm_map(outcomes_docs, toSpace, "/")
+outcomes_docs <- tm_map(outcomes_docs, toSpace, "@")
+outcomes_docs <- tm_map(outcomes_docs, toSpace, "\\|")
+outcomes_docs <- tm_map(outcomes_docs, removePunctuation)
+outcomes_docs <- tm_map(outcomes_docs, content_transformer(tolower))
+outcomes_docs <- tm_map(outcomes_docs, removeWords, c(stopwords("english"), "will", "research"))
 
 #Convert to DTM
-dtm<-DocumentTermMatrix(docs)
+outcomes_dtm<-DocumentTermMatrix(outcomes_docs)
 
-outcomesLDA<- LDA(dtm, k=4, control=list(seed=1234))
-outcomesLDA
-top_terms<-tidy(outcomesLDA, matrix="beta") %>% 
+outcomesLDA<- LDA(outcomes_dtm, k=2, control=list(seed=1234))
+
+outcomes_top_terms<-tidy(outcomesLDA, matrix="beta") %>% 
   group_by(topic) %>% 
   top_n(10, beta) %>% 
   arrange(desc(beta))
-top_terms
 
-top_terms %>% 
+
+LDA_outcomes_plot<-outcomes_top_terms %>% 
   ggplot(aes(term, beta, fill=factor(topic))) + 
   geom_col(show.legend=FALSE) +
   facet_wrap(~topic, scales="free")+

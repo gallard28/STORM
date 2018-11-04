@@ -143,6 +143,9 @@ APIdata$primaryProgram<-as.character(APIdata$primaryProgram)
 APIdata$title<-as.character(APIdata$title)
 APIdata$estimatedTotalAmt<- as.numeric(APIdata$estimatedTotalAmt)
 APIdata$fundsObligatedAmt <- as.numeric(APIdata$fundsObligatedAmt)
+APIdata$publicationConference<-as.character(APIdata$publicationConference)
+APIdata$publicationResearch<-as.character(APIdata$publicationResearch)
+
 
 
 
@@ -153,7 +156,8 @@ MissingObl<-APIdata[is.na(APIdata$fundsObligatedAmt),]
 MissingData<-bind_rows(MissingAmt,MissingObl)
 str(MissingData)
 
-APIdata_clean<-APIdata[!(APIdata$X %in% MissingData$X),]
+
+APIdata_clean<-APIdata[!(APIdata$id %in% MissingData$id),]
 
 nrow(APIdata_clean[is.na(APIdata_clean$estimatedTotalAmt),])
 nrow(APIdata_clean[is.na(APIdata_clean$fundsObligatedAmt),])
@@ -162,7 +166,7 @@ MissingDuration<-APIdata[is.na(APIdata$duration),]
 nrow(MissingDuration)
 
 #No Duplicates 
-nrow(APIdata_clean[duplicated(APIdata_clean),])
+nrow(APIdata_clean[duplicated(APIdata_clean$Title),])
 
 ###Quantitative Analysis
 #Create Interval/Duration####
@@ -182,7 +186,23 @@ ggplot(Duration_count, aes(x=duration, y = n, color=n))+
   geom_point()+
   geom_vline(xintercept=mean(Duration_count$duration), color= "red")
 
+#Write Data Frames to CSV/RDA
+#APIData
+Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
+Name<-"APIdata.csv"
+#write.csv(APIdata, paste(Folder,Name, sep=""))
 
+Name<-"APIdata.RData"
+save(APIdata, file= paste(Folder,Name, sep=""))
+
+
+#APIData
+Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
+Name<-"APIdata_clean.csv"
+#write.csv(APIdata_clean, paste(Folder,Name, sep=""))
+
+Name<-"APIdata_clean.RData"
+save(APIdata_clean, file= paste(Folder,Name, sep=""))
 
 #By Transaction Type
 APIdata_Grants<-APIdata %>% 
@@ -191,15 +211,19 @@ APIdata_Grants<-APIdata %>%
 APIdata_Coop<-APIdata %>% 
   filter(transType == "CoopAgrmnt")
 
-
 #By Size 
 #Awards by size
-Size_count<-APIdata %>% 
-  group_by(estimatedTotalAmt) %>% 
-  count()
-Size_count
-
 summary(APIdata$estimatedTotalAmt)
+
+summary(APIdata_Grants$estimatedTotalAmt)
+summary(APIdata_Coop$estimatedTotalAmt)
+
+APIdata %>% 
+  group_by(transType) %>% 
+  summarise(avg_EstimatedAmt = mean(estimatedTotalAmt, na.rm=TRUE)) %>% 
+  ggplot(aes(x=transType, y=avg_EstimatedAmt))+
+  geom_bar(stat="identity")
+
 
 #By Size, 75th percentile
 APIdata %>% 
@@ -244,10 +268,7 @@ APIdata %>%
   geom_histogram()
 
 
-
-
 #Scattplot duration by log(estimatedTotalAmt)
-
 ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=duration, color=transType))+
   geom_point()+
   geom_smooth(method="lm", se=FALSE)+
@@ -267,6 +288,8 @@ str(APIdata$estimatedTotalAmt)
 
 APIdata$estimatedTotalAmt<-as.numeric(APIdata$estimatedTotalAmt)
 
+
+
 #APInoDates without Dates (for textual analysis)####
 APINoDates<-APIdata 
 APINoDates$date<-NULL
@@ -274,154 +297,19 @@ APINoDates$expDate <-NULL
 APINoDates$startDate<-NULL
 APINoDates$duration<-NULL
 APINoDates$interval<-NULL
-names(APIdata)
 
 lowcost<-APINoDates %>% 
   filter(estimatedTotalAmt < 100)
 lowcost
 
+#Write data to CSV
+Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
+Name<-"APINoDates.csv"
+#write.csv(APINoDates, paste(Folder,Name, sep=""))
 
-APINoDates$transType
+Name<-"APINoDates.RData"
+save(APINoDates, file=paste(Folder,Name, sep=""))
 
-
-#Content Analysis####
-data("stop_words")
-abstracts<-APINoDates %>% 
-  select(abstractText, title) %>% 
-  mutate(linenumber = row_number()) 
-
-#Word counts - bigrams####
-tidy_abstracts<-abstracts %>% 
-  unnest_tokens(abstractText, title)
-
-tidy_abstracts
-
-#Bitrams Approach###
-abstract_bigrams <- abstracts %>% 
-  unnest_tokens(bigram, abstractText, token = "ngrams", n=2)
-
-names(abstract_bigrams)
-
-abstract_bigrams %>% 
-  count(bigram, sort=TRUE)
-
-bigrams_separated<-abstract_bigrams %>% 
-  separate(bigram, c("word1", "word2"), sep=" ")
-
-bigrams_filtered<-bigrams_separated %>% 
-  filter(!word1 %in% stop_words$word) %>%
-  filter(!word2 %in% stop_words$word)
-
-bigrams_filtered %>% 
-  count(word1, word2, sort=TRUE)
-
-bigrams_united<-bigrams_filtered %>% 
-  unite(bigram, word1, word2, sep=" ")
-
-TopWords<-bigrams_united %>% 
- count(bigram) %>% 
-  arrange(desc(n)) %>% 
-  top_n(25)
-TopWords
-
-File<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/TopWords.csv"
-write.csv(TopWords, File)
-
-
-#TF-IDF Approach with Bigrams
-bigram_tf_idf<- bigrams_united %>% 
-  count(title, bigram) %>% 
-  bind_tf_idf(bigram, title, n) %>% 
-  arrange(desc(tf_idf))
-
-names(bigram_tf_idf)
-
-#TermFrequency Inverse Document Frequency Graph (Most important words in each award's abstract. Words that are important to one document within collection of documents. )####
-bigram_tf_idf_graph<- bigram_tf_idf %>% 
-  arrange(desc(tf_idf)) %>% 
-  top_n(15)
-bigram_tf_idf_graph
-
-ggplot(bigram_tf_idf_graph, aes(x=reorder(bigram,tf_idf), y=tf_idf, fill=title))+
-  geom_col(show.legend = FALSE)+
-  labs(x=NULL, y="td-idf")+
-  coord_flip()
-  
-#TF-IDF with Trigrams ####
-abstract_trigrams <- abstracts %>% 
-  unnest_tokens(trigram, abstractText, token = "ngrams", n=3)
-
-names(abstract_trigrams)
-
-abstract_trigrams %>% 
-  count(trigram, sort=TRUE)
-
-trigrams_separated<-abstract_trigrams %>% 
-  separate(trigram, c("word1", "word2", "word3"), sep=" ")
-
-trigrams_separated
-
-stop_words$word <- c(stop_words$word, "4 6 2012", "january 4 6", "1030838 oden support")
-
-trigrams_filtered<-trigrams_separated %>% 
-  filter(!word1 %in% stop_words$word) %>%
-  filter(!word2 %in% stop_words$word) %>% 
-  filter(!word3 %in% stop_words$word)
-
-trigrams_filtered %>% 
-  count(word1, word2, word3, sort=TRUE)
-
-trigrams_united<-trigrams_filtered %>% 
-  unite(trigram, word1, word2, word3, sep=" ")
-
-trigrams_united<-trigrams_united %>% 
-  filter(!trigram %in% stop_words$word)
-
-trigram_tf_idf<- trigrams_united %>% 
-  count(title, trigram) %>% 
-  bind_tf_idf(trigram, title, n) %>% 
-  arrange(desc(tf_idf))
-
-trigram_tf_idf_graph<- trigram_tf_idf %>% 
-  arrange(desc(tf_idf)) %>% 
-  top_n(15)
-
-ggplot(trigram_tf_idf_graph, aes(x=reorder(trigram,tf_idf), y=tf_idf, fill=title))+
-  geom_col(show.legend = FALSE)+
-  labs(x=NULL, y="td-idf")+
-  coord_flip()
-
-
-#LDA Approach####
-library(topicmodels)
-library(tm)
-
-#Load and Clean Text
-docs<-Corpus(VectorSource(abstracts$abstractText))
-toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
-docs <- tm_map(docs, toSpace, "/")
-docs <- tm_map(docs, toSpace, "@")
-docs <- tm_map(docs, toSpace, "\\|")
-docs <- tm_map(docs, removePunctuation)
-docs <- tm_map(docs, content_transformer(tolower))
-docs <- tm_map(docs, removeWords, c(stopwords("english"), "will", "research"))
-
-#Convert to DTM
-dtm<-DocumentTermMatrix(docs)
-
-abstractsLDA<- LDA(dtm, k=4, control=list(seed=1234))
-abstractsLDA
-top_terms<-tidy(abstractsLDA, matrix="beta") %>% 
-  group_by(topic) %>% 
-  top_n(10, beta) %>% 
-  arrange(desc(beta))
-top_terms
-
-top_terms %>% 
-  ggplot(aes(term, beta, fill=factor(topic))) + 
-  geom_col(show.legend=FALSE) +
-  facet_wrap(~topic, scales="free")+
-  coord_flip()
 
 
 
