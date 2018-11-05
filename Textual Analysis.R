@@ -1,29 +1,30 @@
-#Textual Analysis 
+####Title: Exploratory Textual Analysis ####
+#Author: Grant A. Allard and Suzie Allard
+#Purpose: 
 
+#Set up####
 #Libraries
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(stringr)
-library(readxl)
-library(readxl)
 library(gtools)
 library(tidytext)
 library(topicmodels)
 library(tm)
+library(gridExtra)
 
 
-#Load Data
-load(APIdata)
+#Load Data -update to harvard verse 
+load("APIdata_clean.RData")
+load("APIdata_clean2.RData")
 
-load(APIdata_clean)
 
-load(APINoDates)
 
 #Content Analysis####
 #Project Abstracts####
 data("stop_words")
-abstracts<-APINoDates %>% 
+abstracts<-APIdata_clean2 %>% 
   select(abstractText, title) %>% 
   mutate(linenumber = row_number()) 
 
@@ -143,7 +144,7 @@ astract_top_terms<-tidy(abstractsLDA, matrix="beta") %>%
 abstract_lda_plot<-astract_top_terms %>% 
   ggplot(aes(term, beta, fill=factor(topic))) + 
   geom_col(show.legend=FALSE) +
-  facet_wrap(~topic, scales="free")+
+  facet_wrap(~topic)+
   coord_flip()
 
 abstract_lda_plot
@@ -157,7 +158,7 @@ nrow(MissingProjectOR)
 APINoDates<- APINoDates[!(APINoDates$id %in% MissingProjectOR$id),]
 nrow(APINoDates)
 
-outcomes<-APINoDates %>% 
+outcomes<-APIdata_clean2 %>% 
   select(projectOutComesReport, title) %>% 
   mutate(linenumber = row_number()) 
 
@@ -256,7 +257,7 @@ outcomes_docs <- tm_map(outcomes_docs, toSpace, "@")
 outcomes_docs <- tm_map(outcomes_docs, toSpace, "\\|")
 outcomes_docs <- tm_map(outcomes_docs, removePunctuation)
 outcomes_docs <- tm_map(outcomes_docs, content_transformer(tolower))
-outcomes_docs <- tm_map(outcomes_docs, removeWords, c(stopwords("english"), "will", "research"))
+outcomes_docs <- tm_map(outcomes_docs, removeWords, c(stopwords("english"), "will", "research", "used", "use", "can", "new", "also", "last"))
 
 #Convert to DTM
 outcomes_dtm<-DocumentTermMatrix(outcomes_docs)
@@ -272,5 +273,11 @@ outcomes_top_terms<-tidy(outcomesLDA, matrix="beta") %>%
 LDA_outcomes_plot<-outcomes_top_terms %>% 
   ggplot(aes(term, beta, fill=factor(topic))) + 
   geom_col(show.legend=FALSE) +
-  facet_wrap(~topic, scales="free")+
+  facet_wrap(~topic)+
   coord_flip()
+
+
+LDA_outcomes_plot
+abstract_lda_plot
+
+grid.arrange(abstract_lda_plot, LDA_outcomes_plot, nrow=2)

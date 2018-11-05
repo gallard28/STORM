@@ -1,4 +1,4 @@
-####Title: 
+####Title: Data Cleaniung 
 #Author:
 #Date
 #Purpose 
@@ -15,13 +15,9 @@ library(tidyr)
 library(ggplot2)
 library(stringr)
 library(readxl)
-library(rvest)
-library(jsonlite) 
-library(httr)
-library(readxl)
 library(gtools)
 library(lubridate)
-library(tidytext)
+
 
 #Install Packages
 
@@ -68,46 +64,11 @@ str(APIdata)
 #str(APIdata[APIdata$title =="Data Observation Network for Earth",])
 
 
-#Data Exploration####
+#Data Cleaning####
 APIdata$awardee<-as.character(APIdata$awardee)
 APIdata$awardeeName<-as.character(APIdata$awardeeName)
-
 APIdata$abstractText<-as.character(APIdata$abstractText)
-
 APIdata$projectOutComesReport<-as.character(APIdata$projectOutComesReport)
-
-AbstractSust<-APIdata %>% 
-  filter(str_detect(abstractText, "sustainability") | str_detect(abstractText, "Sustainability")) %>% 
-  nrow()
-
-AbstractCost<-APIdata %>% 
-  filter(str_detect(abstractText, "cost") | str_detect(abstractText, "Cost")) %>% 
-  nrow()
-
-OutcomesSust<-APIdata %>% 
-  filter(str_detect(projectOutComesReport, "sustainability") | str_detect(projectOutComesReport, "Sustainability")) %>% 
-  nrow()
-
-OutcomesCost<-APIdata %>% 
-  filter(str_detect(projectOutComesReport, "cost") | str_detect(projectOutComesReport, "Cost")) %>% 
-  nrow()
-
-OutcomesCost<-APIdata %>% 
-  filter(str_detect(projectOutComesReport, "cost") | str_detect(projectOutComesReport, "Cost")) %>% 
-  nrow()
-
-
-ggplot(APIdata, aes(x=awardeeName))+
-  geom_bar()
-
-ggplot(APIdata, aes(x=transType))+
-  geom_bar()
-
-
-names(APIdata)
-str(APIdata)
-
-#Clean Data
 APIdata$agency<-as.character(APIdata$agency)
 APIdata$awardeeAddress<-as.character(APIdata$awardeeAddress)
 APIdata$awardeeCity<-as.character(APIdata$awardeeCity)
@@ -147,168 +108,121 @@ APIdata$publicationConference<-as.character(APIdata$publicationConference)
 APIdata$publicationResearch<-as.character(APIdata$publicationResearch)
 
 
-
-
-#Clean Data
+#Missing Data - estimatedTotalAmt and fundsObligatedAmt
 MissingAmt<-APIdata[is.na(APIdata$estimatedTotalAmt),]
 MissingObl<-APIdata[is.na(APIdata$fundsObligatedAmt),]
 
 MissingData<-bind_rows(MissingAmt,MissingObl)
-str(MissingData)
-
 
 APIdata_clean<-APIdata[!(APIdata$id %in% MissingData$id),]
 
 nrow(APIdata_clean[is.na(APIdata_clean$estimatedTotalAmt),])
 nrow(APIdata_clean[is.na(APIdata_clean$fundsObligatedAmt),])
 
-MissingDuration<-APIdata[is.na(APIdata$duration),]
-nrow(MissingDuration)
-
 #No Duplicates 
 nrow(APIdata_clean[duplicated(APIdata_clean$Title),])
 
-###Quantitative Analysis
-#Create Interval/Duration####
+#Create APIdata_clean w/ Interval/Duration####
 APIdata_clean$interval<- APIdata_clean$startDate %--% APIdata_clean$expDate
 
 #seconds to days calculation 
 secs_in_days<- (24*60*60)
 
+#convert to numeric
 APIdata_clean$duration<-as.numeric((as.duration(APIdata_clean$interval))/secs_in_days)
-str(APIdata_clean$duration)
 
-Duration_count<-APIdata_clean %>% 
-  group_by(duration) %>% 
-  count()
-  
-ggplot(Duration_count, aes(x=duration, y = n, color=n))+
-  geom_point()+
-  geom_vline(xintercept=mean(Duration_count$duration), color= "red")
+#check for missing
+MissingDuration<-APIdata[is.na(APIdata$duration),]
+nrow(MissingDuration)
 
-#Write Data Frames to CSV/RDA
-#APIData
+#Create APIdata_clean2 with dates as characters and duration as numeric - can be used with dplyr functions. 
+APIdata_clean2<-APIdata_clean
+APIdata_clean2$interval<-NULL
+APIdata_clean2$startDate<-as.character(APIdata_clean2$startDate)
+APIdata_clean2$expDate<-as.character(APIdata_clean2$expDate)
+APIdata_clean2$date<-as.character(APIdata_clean2$date)
+APIdata_clean2$duration<-as.numeric(as.character(APIdata_clean2$duration))
+
+
+#Filter only for Research and Related Activities ####
+APIdata_clean2<-APIdata_clean2 %>% 
+  filter(primaryProgram == "040100 NSF RESEARCH & RELATED ACTIVIT" | primaryProgram == "490100 NSF RESEARCH & RELATED ACTIVIT")
+
+#Write Data Frames to CSV/RDA####
+#APIData (Converted into R data types but unfiltered data from the API)
 Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
-Name<-"APIdata.csv"
-#write.csv(APIdata, paste(Folder,Name, sep=""))
 
 Name<-"APIdata.RData"
 save(APIdata, file= paste(Folder,Name, sep=""))
 
-
-#APIData
+#APIdata_clean - Cleaned and unffiltered data
 Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
 Name<-"APIdata_clean.csv"
 #write.csv(APIdata_clean, paste(Folder,Name, sep=""))
 
-Name<-"APIdata_clean.RData"
-save(APIdata_clean, file= paste(Folder,Name, sep=""))
+#APIdata_clean2 - cleaned and filtered data that is compatible with dplyr
+Name<-"APIdata_clean2.RData" 
+save(APIdata_clean2, file= paste(Folder,Name, sep=""))
 
-#By Transaction Type
-APIdata_Grants<-APIdata %>% 
-  filter(transType == "Grant")
 
+
+#Quantitative Analysis####
+#Descriptive Stats####
+
+#Transaction Type
+APIdata_Grants<-APIdata_clean2 %>% 
+  group_by(transType == "Grant") %>% 
+  count() %>% 
+  
 APIdata_Coop<-APIdata %>% 
   filter(transType == "CoopAgrmnt")
 
+#Duration 
+
+#Funds Obligated Amot 
 #By Size 
 #Awards by size
 summary(APIdata$estimatedTotalAmt)
-
 summary(APIdata_Grants$estimatedTotalAmt)
 summary(APIdata_Coop$estimatedTotalAmt)
 
-APIdata %>% 
+
+#avg duration by trans type
+APIdata_clean %>% 
   group_by(transType) %>% 
-  summarise(avg_EstimatedAmt = mean(estimatedTotalAmt, na.rm=TRUE)) %>% 
-  ggplot(aes(x=transType, y=avg_EstimatedAmt))+
-  geom_bar(stat="identity")
+  summarise(mean_duration_yrs = mean(duration, na.rm=TRUE)/365)
 
 
-#By Size, 75th percentile
-APIdata %>% 
-  filter(transType =="Grant") %>% 
-  filter(estimatedTotalAmt<=719795) %>%
-  select(estimatedTotalAmt) %>% 
-  summary()
 
-APIdata %>% 
-  filter(transType =="Grant") %>% 
-  filter(estimatedTotalAmt<=719795) %>% 
-  select(estimatedTotalAmt) %>% 
-  summarize(avg=mean(estimatedTotalAmt, na.rm=TRUE), n=n(), 
-            sd=sd(estimatedTotalAmt, na.rm=TRUE), 
-            se = sd/sqrt(n))
-
-APIdata %>% 
-  filter(transType =="Grant") %>% 
-  filter(estimatedTotalAmt<=719795) %>% 
-  ggplot(aes(x=estimatedTotalAmt, y=..count..))+
-  geom_histogram()
-
-#Upper 25th Percent
-APIdata %>% 
-  filter(transType =="Grant") %>% 
-  filter(estimatedTotalAmt>719795) %>%
-  select(estimatedTotalAmt) %>% 
-  summary()
-
-APIdata %>% 
-  filter(transType =="Grant") %>% 
-  filter(estimatedTotalAmt>719795) %>% 
-  select(estimatedTotalAmt) %>% 
-  summarize(avg=mean(estimatedTotalAmt, na.rm=TRUE), n=n(), 
-            sd=sd(estimatedTotalAmt, na.rm=TRUE), 
-            se = sd/sqrt(n))
-
-APIdata %>% 
-  filter(transType =="Grant") %>% 
-  filter(estimatedTotalAmt>719795) %>% 
-  ggplot(aes(x=estimatedTotalAmt, y=..count..))+
-  geom_histogram()
-
+APIdata_clean %>% 
+  group_by(primaryProgram) %>%
+  summarise(mean_duration_yrs = mean(duration, na.rm=TRUE)/365) %>% 
+  ggplot(aes(x=primaryProgram, y=mean_duration_yrs))+
+  geom_bar(stat="identity")+
+  theme(axis.text.x=element_text(angle=90, hjust=1))
 
 #Scattplot duration by log(estimatedTotalAmt)
-ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=duration, color=transType))+
+ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=duration, color=transType))+
   geom_point()+
   geom_smooth(method="lm", se=FALSE)+
   ylim(0,4000)+
   geom_hline(yintercept=c(365,730,1095,1460,1825,2190,2555,2920), alpha=.25)
 
-ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=duration))+
-  geom_point()+
-  geom_smooth(method="lm", se=FALSE)+
-  ylim(0,4000)
+#Scatterplot Relationship between estimated and obligated amount
 
-ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=log(estimatedTotalAmt)))+
+ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=log(fundsObligatedAmt)))+
   geom_point()+
   geom_smooth(method="lm")
 
-str(APIdata$estimatedTotalAmt)
-
-APIdata$estimatedTotalAmt<-as.numeric(APIdata$estimatedTotalAmt)
+lm(log(APIdata_clean$estimatedTotalAmt)~log(APIdata_clean$fundsObligatedAmt))
 
 
+APIdata_clean2%>% 
+  filter(str_detect(abstractText, "sustainability") |str_detect(projectOutComesReport, "sustainability")) %>% 
+  group_by(transType) %>% 
+  summarise(mean_duration = mean(duration, na.rm=TRUE)/365)
 
-#APInoDates without Dates (for textual analysis)####
-APINoDates<-APIdata 
-APINoDates$date<-NULL
-APINoDates$expDate <-NULL
-APINoDates$startDate<-NULL
-APINoDates$duration<-NULL
-APINoDates$interval<-NULL
 
-lowcost<-APINoDates %>% 
-  filter(estimatedTotalAmt < 100)
-lowcost
-
-#Write data to CSV
-Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
-Name<-"APINoDates.csv"
-#write.csv(APINoDates, paste(Folder,Name, sep=""))
-
-Name<-"APINoDates.RData"
-save(APINoDates, file=paste(Folder,Name, sep=""))
 
 
 
