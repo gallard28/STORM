@@ -19,8 +19,6 @@ library(gtools)
 library(lubridate)
 
 
-#Install Packages
-
 
 #API Request to get Data####
 #Conducted through Python
@@ -120,7 +118,10 @@ nrow(APIdata_clean[is.na(APIdata_clean$estimatedTotalAmt),])
 nrow(APIdata_clean[is.na(APIdata_clean$fundsObligatedAmt),])
 
 #No Duplicates 
-nrow(APIdata_clean[duplicated(APIdata_clean$Title),])
+nrow(APIdata_clean[!duplicated(APIdata_clean$id),])
+nrow(APIdata_clean[unique(APIdata_clean$id),])
+
+APIdata_clean<-APIdata_clean[!duplicated(APIdata_clean$id),]
 
 #Create APIdata_clean w/ Interval/Duration####
 APIdata_clean$interval<- APIdata_clean$startDate %--% APIdata_clean$expDate
@@ -152,75 +153,18 @@ APIdata_clean2<-APIdata_clean2 %>%
 #APIData (Converted into R data types but unfiltered data from the API)
 Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
 
+#APIdata - readable but unfiltered
 Name<-"APIdata.RData"
 save(APIdata, file= paste(Folder,Name, sep=""))
 
 #APIdata_clean - Cleaned and unffiltered data
-Folder<-"/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/"
-Name<-"APIdata_clean.csv"
-#write.csv(APIdata_clean, paste(Folder,Name, sep=""))
+Name<-"APIdata_clean.Rdata"
+save(APIdata_clean2, file= paste(Folder,Name, sep=""))
 
 #APIdata_clean2 - cleaned and filtered data that is compatible with dplyr
 Name<-"APIdata_clean2.RData" 
 save(APIdata_clean2, file= paste(Folder,Name, sep=""))
 
-
-
-#Quantitative Analysis####
-#Descriptive Stats####
-
-#Transaction Type
-APIdata_Grants<-APIdata_clean2 %>% 
-  group_by(transType == "Grant") %>% 
-  count() %>% 
-  
-APIdata_Coop<-APIdata %>% 
-  filter(transType == "CoopAgrmnt")
-
-#Duration 
-
-#Funds Obligated Amot 
-#By Size 
-#Awards by size
-summary(APIdata$estimatedTotalAmt)
-summary(APIdata_Grants$estimatedTotalAmt)
-summary(APIdata_Coop$estimatedTotalAmt)
-
-
-#avg duration by trans type
-APIdata_clean %>% 
-  group_by(transType) %>% 
-  summarise(mean_duration_yrs = mean(duration, na.rm=TRUE)/365)
-
-
-
-APIdata_clean %>% 
-  group_by(primaryProgram) %>%
-  summarise(mean_duration_yrs = mean(duration, na.rm=TRUE)/365) %>% 
-  ggplot(aes(x=primaryProgram, y=mean_duration_yrs))+
-  geom_bar(stat="identity")+
-  theme(axis.text.x=element_text(angle=90, hjust=1))
-
-#Scattplot duration by log(estimatedTotalAmt)
-ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=duration, color=transType))+
-  geom_point()+
-  geom_smooth(method="lm", se=FALSE)+
-  ylim(0,4000)+
-  geom_hline(yintercept=c(365,730,1095,1460,1825,2190,2555,2920), alpha=.25)
-
-#Scatterplot Relationship between estimated and obligated amount
-
-ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=log(fundsObligatedAmt)))+
-  geom_point()+
-  geom_smooth(method="lm")
-
-lm(log(APIdata_clean$estimatedTotalAmt)~log(APIdata_clean$fundsObligatedAmt))
-
-
-APIdata_clean2%>% 
-  filter(str_detect(abstractText, "sustainability") |str_detect(projectOutComesReport, "sustainability")) %>% 
-  group_by(transType) %>% 
-  summarise(mean_duration = mean(duration, na.rm=TRUE)/365)
 
 
 

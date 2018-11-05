@@ -41,8 +41,22 @@ TransTypeCount_plot<-APIdata_clean2 %>%
   geom_text(aes(x= transType, y=n+100, label=(n)))+
   ylab("number of observations")
 
+TransTypeCount_plot
+
 #Variables - Funds Obligated
 summary(APIdata_clean2$fundsObligatedAmt)
+
+APIdata_clean2 %>% 
+  group_by(transType) %>% 
+  summarise(fundSum = sum(fundsObligatedAmt), fundMean= mean(fundsObligatedAmt), fundSD = sd(fundsObligatedAmt))
+
+#Compare funds obligated between transType
+Fund_Box<-APIdata_clean2 %>% 
+  group_by(transType) %>% 
+  ggplot(aes(x= transType, y=fundsObligatedAmt, color=transType))+
+  geom_boxplot(notch=FALSE)
+Fund_Box
+
 
 #Funds Obligated At by TransType
 FundsByTransType_plot<-APIdata_clean2 %>% 
@@ -54,11 +68,10 @@ FundsByTransType_plot<-APIdata_clean2 %>%
   ylab("Amt of Funds Obligated (in $1,000s)")
 
 
-#Duration (in days)
+#Variables - Duration (in days)####
 summary(APIdata_clean2$duration)
 
 #Diff in mean durations between Grants and Cooperative Agreements
-
 mean(APIdata_clean2[APIdata_clean2$transType=="Grant","duration"])
 sd(APIdata_clean2[APIdata_clean2$transType=="Grant","duration"])
 
@@ -72,7 +85,7 @@ t.test(x=APIdata_clean2[APIdata_clean2$transType=="Grant","duration"], y=APIdata
 Duration_Box<-APIdata_clean2 %>% 
   group_by(transType) %>% 
   ggplot(aes(x= transType, y=duration, color=transType))+
-  geom_boxplot(notch=FALSE)
+  geom_boxplot(notch=TRUE)
 Duration_Box
   
 
@@ -130,12 +143,13 @@ APIdata_clean2[APIdata_clean2$duration>=1825 & APIdata_clean2$duration<2190 ,"du
 # GTE 6 years - GT 2190 -> 7
 APIdata_clean2[APIdata_clean2$duration>=2190,"durationCat"]<-7
 
+
 #Table of new categorical variable
 table(APIdata_clean2$durationCat)
 
 #median 
-median(APIdata_clean2[APIdata_clean2$transType=="Grant","durationCat"])
-median(APIdata_clean2[APIdata_clean2$transType=="CoopAgrmnt","durationCat"])
+median(APIdata_clean2[APIdata_clean2$transType=="Grant","duration"])
+median(APIdata_clean2[APIdata_clean2$transType=="CoopAgrmnt","duration"])
 
 #bar plot with categorical variable
 APIdata_clean2 %>% 
@@ -145,49 +159,122 @@ APIdata_clean2 %>%
   geom_bar(stat="identity")
 
 
+#Conduct Descriptive Analysies based on length
+APIdata_clean2 %>% 
+  group_by(transType, durationCat) %>% 
+  summarise(fundSum = sum(fundsObligatedAmt), fundMean= mean(fundsObligatedAmt), fundSD = sd(fundsObligatedAmt))
+
+Fund_Duration_Box<-APIdata_clean2 %>% 
+  group_by(transType,durationCat) %>% 
+  ggplot(aes(x= factor(durationCat), y=fundsObligatedAmt, color=transType))+
+  geom_boxplot(notch=FALSE)+
+  ylim(0,5e+07)
+Fund_Duration_Box
+
+
+Fund_Duration_Grant_Box<-APIdata_clean2 %>% 
+  group_by(transType,durationCat) %>% 
+  filter(transType=="Grant") %>% 
+  ggplot(aes(x= factor(durationCat), y=fundsObligatedAmt, color=transType))+
+  geom_boxplot(notch=FALSE)+
+  ylim(0,5e+06)+
+  scale_color_manual(values=c("#00BFC4"))
+Fund_Duration_Grant_Box
 
 
 
+#Categorical variables based on presence of words in abstract/outcomes report####
+#Presence of 'Sustainability' in abstract
+APIdata_clean2%>% 
+  filter(str_detect(abstractText, "sustainability")| str_detect(abstractText, "Sustainability")  |str_detect(projectOutComesReport, "sustainability") |str_detect(projectOutComesReport, "Sustainability")) %>% 
+  group_by(transType) %>% 
+  select(transType, duration) %>% 
+  summary()
 
-
-
-
-
-
-#Scatterplot Relationship between estimated and obligated amount
-  
-  ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=log(fundsObligatedAmt)))+
-    geom_point()+
-    geom_smooth(method="lm")
-  
-  lm(log(APIdata_clean$estimatedTotalAmt)~log(APIdata_clean$fundsObligatedAmt))
-  
-  
-  APIdata_clean2%>% 
-    filter(str_detect(abstractText, "sustainability") |str_detect(projectOutComesReport, "sustainability")) %>% 
+APIdata_clean2%>% 
+    filter(str_detect(abstractText, "sustainability")| str_detect(abstractText, "Sustainability")  |str_detect(projectOutComesReport, "sustainability") |str_detect(projectOutComesReport, "Sustainability")) %>% 
     group_by(transType) %>% 
     summarise(mean_duration = mean(duration, na.rm=TRUE)/365)
-  
-  
-  
-#Scattplot duration by log(estimatedTotalAmt)
-  ggplot(APIdata_clean, aes(x=log(fundsObligatedAmt), y=duration, color=transType))+
-    geom_point()+
-    geom_smooth(method="lm", se=FALSE)+
-    ylim(0,4000)+
-    geom_hline(yintercept=c(365,730,1095,1460,1825,2190,2555,2920), alpha=.25)
-  
-#Scatterplot Relationship between estimated and obligated amount
-  
-  ggplot(APIdata_clean, aes(x=log(estimatedTotalAmt), y=log(fundsObligatedAmt)))+
-    geom_point()+
-    geom_smooth(method="lm")
-  
-  lm(log(APIdata_clean$estimatedTotalAmt)~log(APIdata_clean$fundsObligatedAmt))
-  
-  
-  APIdata_clean2%>% 
-    filter(str_detect(abstractText, "sustainability") |str_detect(projectOutComesReport, "sustainability")) %>% 
-    group_by(transType) %>% 
-    summarise(mean_duration = mean(duration, na.rm=TRUE)/365)
+
+#Create data frame with subsetted awards   
+Sustainability<-APIdata_clean2%>% 
+  filter(str_detect(abstractText, "sustainability")| str_detect(abstractText, "Sustainability")  |str_detect(projectOutComesReport, "sustainability") |str_detect(projectOutComesReport, "Sustainability")) %>% 
+  group_by(transType)
+
+#Presence of 'commercialization' in abstract
+APIdata_clean2%>% 
+  filter(str_detect(abstractText, "commercialization")|str_detect(abstractText, "Commercialization") | str_detect(projectOutComesReport, "commercialization") | str_detect(projectOutComesReport, "Commercialization")) %>% 
+  group_by(transType) %>% 
+  select(transType, duration) %>% 
+  summary()
+
+APIdata_clean2%>% 
+  filter(str_detect(abstractText, "commercialization")|str_detect(abstractText, "Commercialization") | str_detect(projectOutComesReport, "commercialization") | str_detect(projectOutComesReport, "Commercialization")) %>% 
+  group_by(transType) %>% 
+  summarise(mean_duration = mean(duration, na.rm=TRUE)/365) 
+
+#Create data frame with subsetted awards   
+Commercialization<-APIdata_clean2%>% 
+  filter(str_detect(abstractText, "commercialization")|str_detect(abstractText, "Commercialization") | str_detect(projectOutComesReport, "commercialization") | str_detect(projectOutComesReport, "Commercialization")) %>% 
+  group_by(transType)
+
+
+#Technology Transfer 
+TT<-APIdata_clean2%>% 
+  filter(str_detect(abstractText, "technology transfer")|str_detect(abstractText, "Technology Transfer") | str_detect(projectOutComesReport, "technology transfer") | str_detect(projectOutComesReport, "Technology Transfer")) %>% 
+  group_by(transType)
+
+
+#Join Commercialization and TT####
+TT<-bind_rows(TT,Commercialization )
+
+#Find duplicates
+nrow(TT[duplicated(TT$id),])
+
+#Remove duplicates
+TT<-TT[!duplicated(TT$id),]
+
+#Add TT categorical variable to APIdata_clean2####
+nrow(APIdata_clean2[APIdata_clean2$id %in% TT$id,])
+
+APIdata_clean2$TT<-0
+APIdata_clean2[APIdata_clean2$id %in% TT$id,"TT"]<-1
+
+
+#Join TT and Sustainability####
+TTandSus<-bind_rows(TT,Sustainability)
+
+#Find duplicates
+nrow(TTandSus[duplicated(TTandSus$id),])
+
+#Remove duplicates
+TTandSus<-TTandSus[!duplicated(TTandSus$id),]
+
+#Add TTandSus categorical variable to APIdata_clean2####
+nrow(APIdata_clean2[APIdata_clean2$id %in% TTandSus$id,])
+
+APIdata_clean2$TTandSus<-0
+APIdata_clean2[APIdata_clean2$id %in% TTandSus$id,"TTandSus"]<-1
+
+
+#Boxplot for TT and Sus on duration 
+APIdata_clean2 %>% 
+  group_by(TTandSus, transType) %>% 
+  ggplot(aes(x=factor(TTandSus), y=duration))+
+  geom_boxplot(notch=TRUE)
+
+#Medians are very similar
+APIdata_clean2 %>% 
+  group_by(TTandSus, transType) %>% 
+  ggplot(aes(x=factor(TTandSus), y=fundsObligatedAmt))+
+  geom_boxplot(notch=TRUE)+
+  ylim(0,2.5e+06)
+
+
+
+
+
+
+
+
   
