@@ -112,30 +112,64 @@ data2.to_csv(csvloc)
 
 
 
-#Calculate list of offsets - change search paramaters: date
-#Cyberinfrastrucute Call 
-start= "01/01/2008"
-end="10/30/2018"
-
-
-term="cyberinfrastructure"
-offset="4000"
+#Looped Call 
+#Set URL
+base="http://api.nsf.gov/services/v1/awards.json?"
+keyword="keyword=" 
+offset_term="&offset="
+printFields="printFields="
 Fields ="id,agency,awardeeCity,awardeeCountryCode,awardeeCounty,awardeeDistrictCode,awardeeName,awardeeStateCode,awardeeZipCode,cfdaNumber,coPDPI, date,startDate,expDate,estimatedTotalAmt, fundsObligatedAmt,dunsNumber,fundProgramName,parentDunsNumber,pdPIName,perfCity,perfCountryCode,perfCounty,perfDistrictCode,perfLocation,perfStateCode,perfZipCode,poName,primaryProgram,transType,title,awardee,poPhone,poEmail,awardeeAddress,perfAddress,publicationResearch,publicationConference,fundAgencyCode,awardAgencyCode,projectOutComesReport,abstractText,piFirstName,piMiddeInitial,piLastName,piPhone,piEmail"
-url = (base+dateStart+start+offset_term+offset+"&"+printFields+Fields)
-json_data = requests.get(url).json()
-json_response = json_data['response']
-json_award = json_response['award']
-data=json_normalize(json_award)
 
 
-url
+#Create data frame
+cols={"id", "agency", "awardeeCity", "awardeeCountryCode", "awardeeCounty", "awardeeDistrictCode", "awardeeName", "awardeeStateCode", "awardeeZipCode", "cfdaNumber", "coPDPI", "date", "startDate", "expDate", "estimatedTotalAmt", "fundsObligatedAmt", "dunsNumber", "fundProgramName", "parentDunsNumber", "pdPIName", "perfCity", "perfCountryCode", "perfCounty", "perfDistrictCode", "perfLocation", 'perfStateCode', "perfZipCode", "poName", "primaryProgram", "transType", "title", "awardee", "poPhone", "poEmail", "awardeeAddress", "perfAddress", "publicationResearch", "publicationConference", "fundAgencyCode", "awardAgencyCode", "projectOutComesReport", "abstractText", "piFirstName", "piMiddeInitial", "piLastName", "piPhone", "piEmail"}
+data=pd.DataFrame(columns=cols)
 
-#Loop 
+
+#Calculate list of offsets
 offsets = numpy.arange(0, 3000, 25)
+offsets = offsets.tolist()
+
+for i in offsets:
+    print("loop start", i)
+    term="cyberinfrastructure"
+    offset=str(i)
+    url = (keywordsearch+term+offset_term+offset+"&"+printFields+Fields)
+    
+    #Json data
+    json_data = requests.get(url).json()
+    json_response = json_data['response']
+    json_award = json_response['award']
+    d=json_normalize(json_award)
+    data = data.append(d, ignore_index=True)
+    time.sleep(.25)
+    print("loop end", i)
+    
+csvloc = ""
+data.to_csv(csvloc)    
+
+
+#Second Looped Call - "" around cyberinfrastructure
+#Set URL
+
+base="http://api.nsf.gov/services/v1/awards.json?"
+keyword="keyword=" 
+offset_term="&offset="
+printFields="printFields="
+Fields ="id,agency,awardeeCity,awardeeCountryCode,awardeeCounty,awardeeDistrictCode,awardeeName,awardeeStateCode,awardeeZipCode,cfdaNumber,coPDPI, date,startDate,expDate,estimatedTotalAmt, fundsObligatedAmt,dunsNumber,fundProgramName,parentDunsNumber,pdPIName,perfCity,perfCountryCode,perfCounty,perfDistrictCode,perfLocation,perfStateCode,perfZipCode,poName,primaryProgram,transType,title,awardee,poPhone,poEmail,awardeeAddress,perfAddress,publicationResearch,publicationConference,fundAgencyCode,awardAgencyCode,projectOutComesReport,abstractText,piFirstName,piMiddeInitial,piLastName,piPhone,piEmail"
+keywordsearch = (base+keyword)
+
+#Create data frame
+cols={"id", "agency", "awardeeCity", "awardeeCountryCode", "awardeeCounty", "awardeeDistrictCode", "awardeeName", "awardeeStateCode", "awardeeZipCode", "cfdaNumber", "coPDPI", "date", "startDate", "expDate", "estimatedTotalAmt", "fundsObligatedAmt", "dunsNumber", "fundProgramName", "parentDunsNumber", "pdPIName", "perfCity", "perfCountryCode", "perfCounty", "perfDistrictCode", "perfLocation", 'perfStateCode', "perfZipCode", "poName", "primaryProgram", "transType", "title", "awardee", "poPhone", "poEmail", "awardeeAddress", "perfAddress", "publicationResearch", "publicationConference", "fundAgencyCode", "awardAgencyCode", "projectOutComesReport", "abstractText", "piFirstName", "piMiddeInitial", "piLastName", "piPhone", "piEmail"}
+data2=pd.DataFrame(columns=cols)
+
+
+#Calculate list of offsets- change term
+offsets = numpy.arange(0, 20000, 25)
 offsets = offsets.tolist()
 for i in offsets:
     print("loop start", i)
-    term='"cyberinfrastructure"'
+    term='"cyber infrastructure"'
     offset=str(i)
     url = (keywordsearch+term+offset_term+offset+"&"+printFields+Fields)
     
@@ -148,6 +182,11 @@ for i in offsets:
     time.sleep(.25)
     print("loop end", i)
     
-csvloc = ""
-data2.to_csv(csvloc)
+csvloc = "/Users/GrantAllard/Documents/Allard Scholarship/Conferences and Journals - CFPs, Etc. /ASIS&T 2018/Cyberinfrastructure poster/Data and Analysis/STORM/Cyber-infrastructure.csv"
+data2.to_csv(csvloc)  
+
+
+
+
+
 

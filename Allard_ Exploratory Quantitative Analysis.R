@@ -2,6 +2,10 @@
 #Author: Grant A. Allard and Suzie Allard
 #Purpose
 
+
+
+
+
 #Setup####
 #SessionInfo for debugging later
 sessionInfo()
@@ -14,6 +18,8 @@ library(stringr)
 library(gtools)
 library(lubridate)
 library(scales)
+library(boot)
+library(broom)
 
 #Load Data####
 #All Data
@@ -27,10 +33,12 @@ load("APIdata_clean2.RData")
 
 
 #Quantitative Analysis####
-
 #Descriptive Stats####
 #Data Set - Full, Missing, Filtered Data
 
+#Create StartYear Field for TransType Variables
+APIdata_clean2$startDate<-as.Date(APIdata_clean2$startDate)
+APIdata_clean2$startYear<-format(as.Date(APIdata_clean2$startDate, format="%d/%m/%Y"),"%Y")
 
 #Variables - Trans Type
 TransTypeCount_plot<-APIdata_clean2 %>% 
@@ -40,8 +48,21 @@ TransTypeCount_plot<-APIdata_clean2 %>%
   geom_bar(stat="identity")+
   geom_text(aes(x= transType, y=n+100, label=(n)))+
   ylab("number of observations")
-
 TransTypeCount_plot
+
+#Fig on Website: Trans Type by Year####
+TransType_by_Year<-APIdata_clean2 %>% 
+  group_by(transType, startYear) %>% 
+  count() %>% 
+  ggplot( aes(x= startYear, y=n, fill=transType)) +
+  geom_bar(stat="identity")+
+  xlab("year of project's start")+
+  ylab("number of observations")+
+  labs(fill="Funding Mechanism")
+TransType_by_Year
+
+APIdata_clean2$startDate<-as.character(APIdata_clean2$startDate)
+APIdata_clean2$startYear<-as.character(APIdata_clean2$startDate)
 
 #Variables - Funds Obligated
 summary(APIdata_clean2$fundsObligatedAmt)
@@ -158,7 +179,6 @@ APIdata_clean2 %>%
   ggplot(aes(x=durationCat, y=n, fill=transType))+
   geom_bar(stat="identity")
 
-
 #Conduct Descriptive Analysies based on length
 APIdata_clean2 %>% 
   group_by(transType, durationCat) %>% 
@@ -180,7 +200,6 @@ Fund_Duration_Grant_Box<-APIdata_clean2 %>%
   ylim(0,5e+06)+
   scale_color_manual(values=c("#00BFC4"))
 Fund_Duration_Grant_Box
-
 
 
 #Categorical variables based on presence of words in abstract/outcomes report####
@@ -270,11 +289,72 @@ APIdata_clean2 %>%
   geom_boxplot(notch=TRUE)+
   ylim(0,2.5e+06)
 
+#Fig on Website: Linear Model of Duration by Funding Amount####
+#Get rid of 0s so I can do log transformation
+APIdata_log<- APIdata_clean2 %>% 
+  filter(fundsObligatedAmt>0)
 
 
+APIdata_log$logOblAmt<-log(APIdata_log$fundsObligatedAmt)
+#Model
+Model<-lm(data=APIdata_log, duration ~ logOblAmt +transType)
+summary(Model, robust=T)
+  
+#Plot
+ggplot(augment(Model), aes(x=logOblAmt  , y = duration, color=transType))+
+  geom_point()+
+  geom_line(aes(y=.fitted),size=1.2)+
+  labs(x= "funds obligated (log of $)", y="duration (in days)")+
+  ylim(0,4000)+
+  labs(color="Funding Mechanism")
+
+#Plot
+ggplot(APIdata_log, aes(x=log(fundsObligatedAmt), y=duration, color=transType))+
+  geom_point()+
+  geom_smooth(method="lm")+
+  ylim(0,3000)+
+  ylab("duration (in days)")+
+  xlab("Funds Obligated Amt (log-scale)")
+  
+
+#Awardees ####
+Awardees_Table<-APIdata_clean2 %>% 
+  group_by(awardee) %>% 
+  count() %>% 
+  arrange(desc(n)) 
+
+Awardees_Table_Top<-Awardees_Table[1:10,]
+
+ggplot(Awardees_Table_Top, aes(x=reorder(awardee, -n), y=n))+
+  geom_bar(stat="identity")+
+  theme(axis.text.x=element_text(angle=90, size=5, vjust=.25))+
+  ylab("number of observations")+
+  xlab("awardee")
+  
+#Top Awardees by Year
+APIdata_clean2$startDate<-as.Date(APIdata_clean2$startDate)
+APIdata_clean2$startYear<-format(as.Date(APIdata_clean2$startDate, format="%d/%m/%Y"),"%Y")
+
+Awardees_Table<-APIdata_clean2 %>% 
+  group_by(awardee, startYear) %>% 
+  count() %>% 
+  arrange(desc(n)) 
+
+#Keep only awardees in overall top 10 list
+Awardees_by_year_top<-Awardees_Table[Awardees_Table$awardee %in% Awardees_Table_Top$awardee,]
 
 
+ggplot(Awardees_by_year_top, aes(x=startYear, y=n, fill=awardee))+
+  geom_bar(stat="identity")+
+  theme(axis.text.x=element_text(angle=90, size=5, vjust=.25))+
+  ylab("number of observations")+
+  xlab("awardee")
 
+
+APIdata_clean2$startDate<-as.character(APIdata_clean2$startDate)
+APIdata_clean2$startYear<-as.character(APIdata_clean2$startDate)
+
+#
 
 
   

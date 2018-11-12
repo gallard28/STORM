@@ -20,7 +20,6 @@ load("APIdata_clean.RData")
 load("APIdata_clean2.RData")
 
 
-
 #Content Analysis####
 #Project Abstracts####
 data("stop_words")
@@ -145,20 +144,22 @@ abstract_lda_plot<-astract_top_terms %>%
   ggplot(aes(term, beta, fill=factor(topic))) + 
   geom_col(show.legend=FALSE) +
   facet_wrap(~topic)+
-  coord_flip()
+  coord_flip()+
+  ggtitle("LDA of Abstracts")+
+  ylab("probability")
 
 abstract_lda_plot
 
 #ProjectOutcomes Reports####
 #Word counts - bigrams####
 #Clean Project Outcomes Reports (only look at the ones which have them)
-MissingProjectOR<-APINoDates[APINoDates$projectOutComesReport=="",]
+MissingProjectOR<-APIdata_clean2[APIdata_clean2$projectOutComesReport=="",]
 nrow(MissingProjectOR)
 
-APINoDates<- APINoDates[!(APINoDates$id %in% MissingProjectOR$id),]
-nrow(APINoDates)
+APIdata_outcomes_clean<- APIdata_clean2[!(APIdata_clean2$id %in% MissingProjectOR$id),]
+nrow(APIdata_outcomes_clean)
 
-outcomes<-APIdata_clean2 %>% 
+outcomes<-APIdata_outcomes_clean %>% 
   select(projectOutComesReport, title) %>% 
   mutate(linenumber = row_number()) 
 
@@ -274,10 +275,13 @@ LDA_outcomes_plot<-outcomes_top_terms %>%
   ggplot(aes(term, beta, fill=factor(topic))) + 
   geom_col(show.legend=FALSE) +
   facet_wrap(~topic)+
-  coord_flip()
-
-
-LDA_outcomes_plot
+  coord_flip()+
+  ggtitle("LDA of Outcomes Reports")+
+  ylab("probability")
+  
 abstract_lda_plot
+LDA_outcomes_plot
+
 
 grid.arrange(abstract_lda_plot, LDA_outcomes_plot, nrow=2)
+

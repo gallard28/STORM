@@ -144,6 +144,16 @@ APIdata_clean2$expDate<-as.character(APIdata_clean2$expDate)
 APIdata_clean2$date<-as.character(APIdata_clean2$date)
 APIdata_clean2$duration<-as.numeric(as.character(APIdata_clean2$duration))
 
+#Understand Primary Programs####
+APIdata %>% 
+  group_by(primaryProgram) %>% 
+  count() %>% 
+  ggplot(aes(x=primaryProgram, y=n))+
+  geom_bar(stat="identity")+
+  theme(axis.text.x=element_text(angle=90, size=5, vjust=.25))
+
+ARRA<-APIdata %>% 
+  filter(APIdata$primaryProgram=="040101 RRA RECOVERY ACT")
 
 #Filter only for Research and Related Activities ####
 APIdata_clean2<-APIdata_clean2 %>% 
