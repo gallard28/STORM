@@ -27,8 +27,6 @@ wordcloud(words = abstract_d$word, freq = abstract_d$freq, min.freq = 1,
 
 
 #Wordcloud on Outcomes####
-outcomes_tdm<- TermDocumentMatrix(outcomes_docs)
-outcomes_m<-as.matrix(outcomes_tdm)
 outcomes_v<- sort(rowSums(outcomes_m), decreasing=TRUE)
 outcomes_d<-data.frame(word=names(outcomes_v), freq=outcomes_v)
 

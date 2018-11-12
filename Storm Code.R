@@ -1,8 +1,5 @@
-####Title: Data Cleaniung 
-#Author:
-#Date
-#Purpose 
-
+####Title: Data Cleaning and Wrangling
+#Author: Grant Allard and Suzie Allard
 
 #Set up####
 

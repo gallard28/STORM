@@ -19,7 +19,6 @@ library(gridExtra)
 load("APIdata_clean.RData")
 load("APIdata_clean2.RData")
 
-
 #Content Analysis####
 #Project Abstracts####
 data("stop_words")

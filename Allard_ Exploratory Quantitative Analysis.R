@@ -289,13 +289,19 @@ APIdata_clean2 %>%
   geom_boxplot(notch=TRUE)+
   ylim(0,2.5e+06)
 
+
+x
+#Cooperative Agreement
+APIdata_clean2 %>% 
+  filter(transType!="Grant" & date=="1999")
+
 #Fig on Website: Linear Model of Duration by Funding Amount####
 #Get rid of 0s so I can do log transformation
 APIdata_log<- APIdata_clean2 %>% 
   filter(fundsObligatedAmt>0)
 
-
 APIdata_log$logOblAmt<-log(APIdata_log$fundsObligatedAmt)
+
 #Model
 Model<-lm(data=APIdata_log, duration ~ logOblAmt +transType)
 summary(Model, robust=T)
@@ -346,15 +352,12 @@ Awardees_by_year_top<-Awardees_Table[Awardees_Table$awardee %in% Awardees_Table_
 
 ggplot(Awardees_by_year_top, aes(x=startYear, y=n, fill=awardee))+
   geom_bar(stat="identity")+
-  theme(axis.text.x=element_text(angle=90, size=5, vjust=.25))+
   ylab("number of observations")+
   xlab("awardee")
-
 
 APIdata_clean2$startDate<-as.character(APIdata_clean2$startDate)
 APIdata_clean2$startYear<-as.character(APIdata_clean2$startDate)
 
-#
 
 
   
